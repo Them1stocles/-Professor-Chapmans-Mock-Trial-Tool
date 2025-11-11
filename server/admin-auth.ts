@@ -3,10 +3,12 @@ import { storage } from './storage';
 import { randomUUID } from 'crypto';
 
 // Admin password - use environment variable or fallback for development
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ChapmanEnglish2024!';
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'ChapmanEnglish2024!').trim();
 
 if (!process.env.ADMIN_PASSWORD) {
   console.warn('WARNING: Using default admin password. Set ADMIN_PASSWORD environment variable for production.');
+} else {
+  console.log('✓ Admin password loaded from environment (length:', ADMIN_PASSWORD.length, 'chars)');
 }
 
 // Simple rate limiting for admin login (classroom use)
@@ -54,13 +56,19 @@ export async function adminLogin(req: Request, res: Response) {
     }
     
     const { password } = req.body;
+    const trimmedPassword = password?.trim();
     
-    if (!password || password !== ADMIN_PASSWORD) {
+    console.log('Admin login attempt - Password length received:', password?.length, 'Expected length:', ADMIN_PASSWORD.length);
+    
+    if (!trimmedPassword || trimmedPassword !== ADMIN_PASSWORD) {
+      console.log('Admin login failed - Password mismatch');
       return res.status(401).json({ 
         error: 'Invalid password',
         message: 'Incorrect admin password'
       });
     }
+    
+    console.log('Admin login successful');
     
     // Clear rate limiting on successful login
     loginAttempts.delete(clientIP);
@@ -75,8 +83,9 @@ export async function adminLogin(req: Request, res: Response) {
     res.cookie('admin_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax', // Changed from 'strict' to 'lax' for Render compatibility
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: '/',
     });
     
     res.json({ 
