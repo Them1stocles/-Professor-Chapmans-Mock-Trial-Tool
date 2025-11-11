@@ -51,7 +51,7 @@ type AdminViolationEvent = ViolationEvent;
 const addStudentSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   name: z.string().min(1, "Name is required"),
-  dailyTokenLimit: z.number().min(1, "Daily limit must be at least 1").max(10000, "Daily limit too high").nullable(),
+  dailyTokenLimit: z.number().min(1, "Daily limit must be at least 1").max(99999, "Daily limit too high").nullable(),
   monthlyCostLimit: z.string().min(1, "Monthly cost limit is required"),
 });
 

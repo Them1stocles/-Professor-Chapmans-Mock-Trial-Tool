@@ -68,6 +68,12 @@ const LITERATURE_KEYWORDS = [
   'diction', 'syntax', 'structure', 'organization', 'development'
 ];
 
+// Question patterns that indicate non-literature queries
+const QUESTION_PATTERNS = {
+  homework: /^(what is|explain|define|how does|calculate|solve|find the|prove|show that)/i,
+  directAnswer: /^(what'?s|whats|tell me about|give me|list)/i,
+};
+
 // Check if content contains non-English literature keywords
 export function checkContentFilter(content: string): {
   isViolation: boolean;
@@ -76,6 +82,7 @@ export function checkContentFilter(content: string): {
   details: string;
 } {
   const lowerContent = content.toLowerCase();
+  const trimmedContent = content.trim();
   
   // Count keywords from different categories
   const scores = {
@@ -86,11 +93,19 @@ export function checkContentFilter(content: string): {
     literature: 0
   };
   
-  // Check each category
+  const detectedKeywords = {
+    math: [] as string[],
+    science: [] as string[],
+    technology: [] as string[],
+    other: [] as string[],
+  };
+  
+  // Check each category and track which keywords were found
   for (const [category, keywords] of Object.entries(NON_ENGLISH_KEYWORDS)) {
     for (const keyword of keywords) {
       if (lowerContent.includes(keyword.toLowerCase())) {
         scores[category as keyof typeof scores]++;
+        detectedKeywords[category as keyof typeof detectedKeywords].push(keyword);
       }
     }
   }
@@ -106,7 +121,36 @@ export function checkContentFilter(content: string): {
   const totalNonLit = scores.math + scores.science + scores.technology + scores.other;
   const totalLit = scores.literature;
   
-  // If has literature keywords, be more lenient
+  // Check if question matches homework/direct answer patterns
+  const isHomeworkPattern = QUESTION_PATTERNS.homework.test(trimmedContent) || 
+                           QUESTION_PATTERNS.directAnswer.test(trimmedContent);
+  
+  // STRICT MODE: Block single non-lit keyword if it's a direct question pattern
+  if (totalNonLit >= 1 && isHomeworkPattern && totalLit === 0) {
+    const primaryCategory = Object.entries(scores)
+      .filter(([cat]) => cat !== 'literature')
+      .sort(([,a], [,b]) => b - a)[0];
+    
+    const keywords = detectedKeywords[primaryCategory[0] as keyof typeof detectedKeywords];
+    
+    return {
+      isViolation: true,
+      category: primaryCategory[0],
+      confidence: 0.85,
+      details: `Direct ${primaryCategory[0]} question detected. Keywords: ${keywords.join(', ')}. No literature context found.`
+    };
+  }
+  
+  // If has strong literature context, be more lenient
+  if (totalLit >= 3 && totalNonLit <= 2) {
+    return {
+      isViolation: false,
+      confidence: 0.9,
+      details: `Strong literature context detected (${totalLit} lit keywords, ${totalNonLit} other keywords)`
+    };
+  }
+  
+  // If has some literature keywords, require more non-lit keywords to block
   if (totalLit > 0 && totalNonLit <= 2) {
     return {
       isViolation: false,
@@ -115,37 +159,50 @@ export function checkContentFilter(content: string): {
     };
   }
   
-  // Strong indicators of non-English subjects
+  // Strong indicators of non-English subjects (3+ keywords)
   if (totalNonLit >= 3) {
     const primaryCategory = Object.entries(scores)
       .filter(([cat]) => cat !== 'literature')
       .sort(([,a], [,b]) => b - a)[0];
     
+    const keywords = detectedKeywords[primaryCategory[0] as keyof typeof detectedKeywords];
+    
     return {
       isViolation: true,
       category: primaryCategory[0],
-      confidence: Math.min(0.9, totalNonLit / 5),
-      details: `${totalNonLit} non-literature keywords detected, primarily ${primaryCategory[0]} (${primaryCategory[1]} keywords)`
+      confidence: Math.min(0.95, totalNonLit / 5),
+      details: `${totalNonLit} non-literature keywords detected, primarily ${primaryCategory[0]}. Keywords: ${keywords.slice(0, 5).join(', ')}`
     };
   }
   
-  // Moderate confidence violations
+  // Moderate confidence violations (2 keywords)
   if (totalNonLit >= 2) {
     const primaryCategory = Object.entries(scores)
       .filter(([cat]) => cat !== 'literature')
       .sort(([,a], [,b]) => b - a)[0];
     
+    const keywords = detectedKeywords[primaryCategory[0] as keyof typeof detectedKeywords];
+    
     return {
       isViolation: true,
       category: primaryCategory[0],
+      confidence: 0.7,
+      details: `${totalNonLit} non-literature keywords detected, possibly ${primaryCategory[0]}. Keywords: ${keywords.join(', ')}`
+    };
+  }
+  
+  // Single keyword but no homework pattern - allow (might be incidental)
+  if (totalNonLit === 1 && !isHomeworkPattern) {
+    return {
+      isViolation: false,
       confidence: 0.6,
-      details: `${totalNonLit} non-literature keywords detected, possibly ${primaryCategory[0]}`
+      details: `Single non-literature keyword detected but appears contextual`
     };
   }
   
   return {
     isViolation: false,
-    confidence: 0.9,
+    confidence: 0.95,
     details: 'Content appears to be literature-focused'
   };
 }
