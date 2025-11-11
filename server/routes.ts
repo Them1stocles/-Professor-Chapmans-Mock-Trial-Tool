@@ -112,14 +112,36 @@ async function checkUsageLimits(studentEmail: string): Promise<{
     };
   } catch (error) {
     console.error('Error checking usage limits:', error);
+    // Fail closed for production safety - deny access if we can't verify limits
     return {
-      canProceed: true, // Fail open
+      canProceed: false,
+      reason: 'Unable to verify usage limits. Please try again.',
       limitsInfo: { dailyTokens: 0, monthlyTokens: 0, dailyCost: 0, monthlyCost: 0 }
     };
   }
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint
+  app.get("/api/health", async (req, res) => {
+    try {
+      // Check database connection
+      await storage.getSettings();
+      res.json({ 
+        status: "healthy", 
+        timestamp: new Date().toISOString(),
+        database: "connected"
+      });
+    } catch (error) {
+      res.status(503).json({ 
+        status: "unhealthy", 
+        timestamp: new Date().toISOString(),
+        database: "disconnected",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Admin Authentication Routes
   app.post("/api/admin/login", adminLogin);
   app.post("/api/admin/logout", adminLogout);

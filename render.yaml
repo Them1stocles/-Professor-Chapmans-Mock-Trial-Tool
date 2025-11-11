@@ -2,7 +2,7 @@ services:
   - type: web
     name: professor-chapmans-mock-trial
     env: node
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npm run db:push && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -13,3 +13,5 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: PORT
+        value: 10000
