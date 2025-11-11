@@ -442,6 +442,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk import students
+  app.post("/api/admin/students/bulk", requireAdmin, async (req, res) => {
+    try {
+      const { students: studentList, defaultDailyTokenLimit, defaultMonthlyCostLimit } = req.body;
+
+      if (!Array.isArray(studentList) || studentList.length === 0) {
+        return res.status(400).json({ 
+          error: "Invalid input",
+          message: "Students array is required and must not be empty"
+        });
+      }
+
+      // Validate input format
+      for (const student of studentList) {
+        if (!student.email || !student.name) {
+          return res.status(400).json({
+            error: "Invalid student data",
+            message: "Each student must have name and email"
+          });
+        }
+      }
+
+      // Get existing students to check for duplicates
+      const existingStudents = await storage.getStudents();
+      const existingEmails = new Set(existingStudents.map(s => s.email.toLowerCase()));
+
+      const results = {
+        added: [] as any[],
+        skipped: [] as Array<{ email: string; reason: string }>,
+        failed: [] as Array<{ email: string; name: string; error: string }>
+      };
+
+      // Process each student
+      for (const student of studentList) {
+        const email = student.email.toLowerCase().trim();
+        const name = student.name.trim();
+
+        // Skip if already exists
+        if (existingEmails.has(email)) {
+          results.skipped.push({
+            email,
+            reason: "Already exists in database"
+          });
+          continue;
+        }
+
+        try {
+          // Create student with default limits
+          const newStudent = await storage.createStudent({
+            email,
+            name,
+            dailyTokenLimit: defaultDailyTokenLimit || null,
+            monthlyCostLimit: defaultMonthlyCostLimit || null,
+            isActive: true
+          });
+
+          results.added.push(newStudent);
+          existingEmails.add(email); // Prevent duplicates within this batch
+        } catch (error) {
+          console.error(`Failed to add student ${email}:`, error);
+          results.failed.push({
+            email,
+            name,
+            error: error instanceof Error ? error.message : "Unknown error"
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        summary: {
+          total: studentList.length,
+          added: results.added.length,
+          skipped: results.skipped.length,
+          failed: results.failed.length
+        },
+        results
+      });
+
+    } catch (error) {
+      console.error("Bulk import error:", error);
+      res.status(500).json({ 
+        error: "Bulk import failed",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   app.post("/api/admin/students", requireAdmin, async (req, res) => {
     try {
       const studentData = insertStudentSchema.parse(req.body);

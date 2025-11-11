@@ -15,9 +15,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
-import { Trash2, Plus, Settings, Users, BarChart3, AlertTriangle, LogOut } from "lucide-react";
+import { Trash2, Plus, Settings, Users, BarChart3, AlertTriangle, LogOut, Upload } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import type { Student, Settings as SchemaSettings, ViolationEvent } from "@shared/schema";
+import { BulkAddStudentsDialog } from "@/components/BulkAddStudentsDialog";
 
 // API Response Types - matching actual server responses
 interface AdminAuthResponse {
@@ -60,6 +61,7 @@ export default function AdminDashboard() {
   const [authChecked, setAuthChecked] = useState(false);
   const [loginForm, setLoginForm] = useState({ password: "" });
   const [addStudentOpen, setAddStudentOpen] = useState(false);
+  const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const { toast } = useToast();
 
   // Check authentication status
@@ -403,13 +405,22 @@ export default function AdminDashboard() {
                 <h2 className="text-xl font-semibold">Student Management</h2>
                 <p className="text-muted-foreground">Manage student access and usage limits</p>
               </div>
-              <Dialog open={addStudentOpen} onOpenChange={setAddStudentOpen}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-add-student">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Student
-                  </Button>
-                </DialogTrigger>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setBulkAddOpen(true)}
+                  data-testid="button-bulk-add-students"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Add
+                </Button>
+                <Dialog open={addStudentOpen} onOpenChange={setAddStudentOpen}>
+                  <DialogTrigger asChild>
+                    <Button data-testid="button-add-student">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Student
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Add New Student</DialogTitle>
@@ -491,7 +502,14 @@ export default function AdminDashboard() {
                   </Form>
                 </DialogContent>
               </Dialog>
+              </div>
             </div>
+
+            {/* Bulk Add Students Dialog */}
+            <BulkAddStudentsDialog 
+              open={bulkAddOpen} 
+              onOpenChange={setBulkAddOpen}
+            />
 
             <Card>
               <CardContent className="p-0">
