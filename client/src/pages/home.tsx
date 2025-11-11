@@ -19,6 +19,7 @@ import { z } from "zod";
 const sessionFormSchema = insertChatSessionSchema.extend({
   characterName: z.string().min(1, "Character name is required"),
   situation: z.string().min(10, "Please describe the situation in more detail"),
+  studentEmail: z.string().email("Valid email is required"),
   studentName: z.string().optional()
 });
 
@@ -34,19 +35,20 @@ export default function Home() {
     defaultValues: {
       characterName: "",
       situation: "",
+      studentEmail: "",
       studentName: ""
     }
   });
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: InsertChatSession) => {
-      const response = await apiRequest('/api/sessions', {
+      const response = await apiRequest<any>('/api/sessions', {
         method: 'POST',
         body: JSON.stringify(sessionData)
       });
       return response;
     },
-    onSuccess: (session) => {
+    onSuccess: (session: any) => {
       toast({
         title: "Session Created",
         description: `Ready to question ${session.characterName} about ${session.situation.substring(0, 50)}...`
@@ -67,6 +69,7 @@ export default function Home() {
     createSessionMutation.mutate({
       characterName: data.characterName,
       situation: data.situation,
+      studentEmail: data.studentEmail,
       studentName: data.studentName || null
     });
   };
@@ -143,6 +146,25 @@ export default function Home() {
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="studentEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Your Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            type="email"
+                            placeholder="your.email@example.com"
+                            data-testid="input-student-email"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <FormField
                     control={form.control}
                     name="studentName"
