@@ -45,6 +45,7 @@ const NON_ENGLISH_KEYWORDS = {
 
 // Princess Bride and literature keywords (allowlist)
 const LITERATURE_KEYWORDS = [
+  // Princess Bride characters and locations
   'princess bride', 'westley', 'buttercup', 'inigo', 'montoya', 'fezzik',
   'vizzini', 'humperdinck', 'miracle max', 'valerie', 'albino', 'rugen',
   'morgenstern', 'goldman', 'florin', 'guilder', 'cliffs of insanity',
@@ -52,6 +53,18 @@ const LITERATURE_KEYWORDS = [
   'six fingered man', 'as you wish', 'hello my name is inigo montoya',
   'you killed my father', 'prepare to die', 'inconceivable',
   'mostly dead', 'all dead', 'iocane powder', 'battle of wits',
+  
+  // Princess Bride plot-relevant terms (prevent false positives)
+  'murder', 'murdered', 'kill', 'killed', 'killing', 'death', 'die', 'dying', 'dead',
+  'kidnap', 'kidnapped', 'kidnapping', 'capture', 'captured', 'abduct',
+  'torture', 'tortured', 'pain', 'suffering', 'machine',
+  'poison', 'poisoned', 'iocane',
+  'sword', 'fight', 'fighting', 'duel', 'battle', 'combat', 'fencing',
+  'revenge', 'vengeance', 'avenge',
+  'love', 'true love', 'romance', 'marry', 'marriage', 'wedding', 'bride', 'groom',
+  'giant', 'monster', 'beast', 'rodent', 'rous',
+  'fire', 'swamp', 'cliff', 'castle', 'pit', 'despair',
+  'miracle', 'magic', 'witch', 'wizard',
   'character', 'motivation', 'plot', 'theme', 'symbolism', 'metaphor',
   'narrative', 'story', 'protagonist', 'antagonist', 'conflict',
   'resolution', 'climax', 'exposition', 'rising action', 'falling action',
@@ -212,23 +225,27 @@ export async function logContentViolation(
   studentEmail: string,
   sessionId: string | null,
   content: string,
-  filterResult: ReturnType<typeof checkContentFilter>
-): Promise<void> {
+  filterResult: ReturnType<typeof checkContentFilter>,
+  status: 'flagged' | 'blocked' | 'proceeded' = 'flagged'
+): Promise<string | null> {
   try {
     // Store the full question in the detail field for admin review
     const categoryLabel = filterResult.category || 'mixed subjects';
     const detail = `[${categoryLabel.toUpperCase()}] Student asked: "${content}"\n\nFilter Analysis: ${filterResult.details} (confidence: ${(filterResult.confidence * 100).toFixed(0)}%)`;
     
-    await storage.createViolationEvent({
+    const event = await storage.createViolationEvent({
       studentEmail,
       sessionId: sessionId || undefined,
       category: 'non-english',  // Category for filtering type
-      detail: detail  // Full question + analysis
+      detail: detail,  // Full question + analysis
+      status
     });
     
-    console.log(`Content violation logged for ${studentEmail}: ${categoryLabel} question blocked`);
+    console.log(`Content violation logged for ${studentEmail}: ${categoryLabel} question ${status}`);
+    return event.id;
   } catch (error) {
     console.error('Failed to log content violation:', error);
+    return null;
   }
 }
 

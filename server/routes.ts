@@ -228,7 +228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/sessions/:sessionId/messages", async (req, res) => {
     try {
       const sessionId = req.params.sessionId;
-      const { content, isProfessorMode = false } = req.body;
+      const { content, isProfessorMode = false, bypassWarning = false, violationId } = req.body;
 
       if (!content || typeof content !== 'string') {
         return res.status(400).json({ error: "Message content is required" });
@@ -248,7 +248,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           studentEmail: session.studentEmail,
           sessionId,
           category: 'rate-limit',
-          detail: usageCheck.reason || 'Usage limit exceeded'
+          detail: usageCheck.reason || 'Usage limit exceeded',
+          status: 'flagged'
         });
 
         return res.status(429).json({ 
@@ -258,17 +259,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Content filtering check
-      const contentCheck = await shouldBlockContent(content);
-      if (contentCheck.shouldBlock) {
-        // Log content violation
-        await logContentViolation(session.studentEmail, sessionId, content, contentCheck.filterResult);
+      // Content filtering check (skip if user is bypassing warning)
+      if (!bypassWarning) {
+        const contentCheck = await shouldBlockContent(content);
+        if (contentCheck.shouldBlock) {
+          // Log content violation as "flagged" and return warning
+          const newViolationId = await logContentViolation(
+            session.studentEmail, 
+            sessionId, 
+            content, 
+            contentCheck.filterResult,
+            'flagged'
+          );
 
-        return res.status(403).json({ 
-          error: "Content not allowed",
-          message: contentCheck.reason,
-          suggestion: "Please ask questions about The Princess Bride characters, plot, themes, or literary analysis techniques."
-        });
+          return res.status(409).json({  // 409 = Conflict (requires user decision)
+            warning: true,
+            violationId: newViolationId,
+            category: contentCheck.filterResult.category || 'mixed',
+            message: contentCheck.reason,
+            details: contentCheck.filterResult.details,
+            confidence: contentCheck.filterResult.confidence,
+            suggestion: "If this question relates to The Princess Bride characters, plot, or literary analysis, you may proceed."
+          });
+        }
+      } else {
+        // User chose to proceed - update violation status
+        if (violationId) {
+          await storage.updateViolationStatus(violationId, 'proceeded');
+          console.log(`User bypassed content warning for violation ${violationId}`);
+        }
       }
 
       // Save user message
@@ -377,7 +396,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           studentEmail: session.studentEmail,
           sessionId,
           category: 'rate-limit',
-          detail: usageCheck.reason || 'Usage limit exceeded in professor mode'
+          detail: usageCheck.reason || 'Usage limit exceeded in professor mode',
+          status: 'flagged'
         });
 
         return res.status(429).json({ 

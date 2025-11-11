@@ -63,6 +63,8 @@ export const violationEvents = pgTable("violation_events", {
   sessionId: varchar("session_id"),
   category: text("category").notNull(), // 'non-english' | 'rate-limit' | 'auth'
   detail: text("detail").notNull(),
+  status: text("status").notNull().default('flagged'), // 'flagged' | 'proceeded' | 'blocked'
+  bypassedAt: timestamp("bypassed_at"),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
@@ -123,8 +125,10 @@ export const insertViolationEventSchema = createInsertSchema(violationEvents).pi
   sessionId: true,
   category: true,
   detail: true,
+  status: true,
 }).extend({
   category: z.enum(['non-english', 'rate-limit', 'auth']),
+  status: z.enum(['flagged', 'proceeded', 'blocked']).default('flagged'),
 });
 
 export const insertAdminTokenSchema = createInsertSchema(adminTokens).pick({

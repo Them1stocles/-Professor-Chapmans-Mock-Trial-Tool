@@ -23,6 +23,7 @@ import {
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import type { ChatSession, ChatMessage } from "@shared/schema";
+import { ContentWarningDialog } from "@/components/ContentWarningDialog";
 
 interface ChatPageProps {}
 
@@ -31,6 +32,14 @@ export default function ChatPage({}: ChatPageProps) {
   const sessionId = params?.sessionId;
   const [message, setMessage] = useState("");
   const [isProfessorMode, setIsProfessorMode] = useState(false);
+  const [pendingWarning, setPendingWarning] = useState<{
+    content: string;
+    violationId: string;
+    category: string;
+    message: string;
+    details: string;
+    confidence: number;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -57,14 +66,24 @@ export default function ChatPage({}: ChatPageProps) {
 
   // Send message mutation with automatic detection + manual override
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ content, isProfessorMode }: { content: string; isProfessorMode: boolean }) => {
+    mutationFn: async ({ 
+      content, 
+      isProfessorMode, 
+      bypassWarning = false, 
+      violationId 
+    }: { 
+      content: string; 
+      isProfessorMode: boolean;
+      bypassWarning?: boolean;
+      violationId?: string;
+    }) => {
       const endpoint = isProfessorMode 
         ? `/api/sessions/${sessionId}/professor-mode`
         : `/api/sessions/${sessionId}/messages`;
       
       const body = isProfessorMode 
         ? JSON.stringify({ question: content })
-        : JSON.stringify({ content });
+        : JSON.stringify({ content, bypassWarning, violationId });
 
       return apiRequest(endpoint, {
         method: 'POST',
@@ -76,14 +95,29 @@ export default function ChatPage({}: ChatPageProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/usage'] });
       setMessage("");
       setIsProfessorMode(false);
+      setPendingWarning(null);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Send message error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive"
-      });
+      
+      // Check if it's a content warning (409 status)
+      if (error.status === 409 && error.warning) {
+        setPendingWarning({
+          content: message,
+          violationId: error.violationId,
+          category: error.category,
+          message: error.message,
+          details: error.details,
+          confidence: error.confidence
+        });
+      } else {
+        // Real error
+        toast({
+          title: "Error",
+          description: error.message || "Failed to send message. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   });
 
@@ -388,6 +422,24 @@ export default function ChatPage({}: ChatPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Content Warning Dialog */}
+      <ContentWarningDialog
+        open={!!pendingWarning}
+        onOpenChange={(open) => !open && setPendingWarning(null)}
+        warning={pendingWarning}
+        onProceed={() => {
+          if (pendingWarning) {
+            sendMessageMutation.mutate({
+              content: pendingWarning.content,
+              isProfessorMode: false,
+              bypassWarning: true,
+              violationId: pendingWarning.violationId
+            });
+          }
+        }}
+        onCancel={() => setPendingWarning(null)}
+      />
     </div>
   );
 }

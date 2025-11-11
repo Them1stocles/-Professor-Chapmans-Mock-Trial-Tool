@@ -249,6 +249,15 @@ export class DatabaseStorage implements IStorage {
     return event;
   }
 
+  async updateViolationStatus(violationId: string, status: 'proceeded' | 'blocked'): Promise<void> {
+    await db.update(violationEvents)
+      .set({ 
+        status,
+        bypassedAt: status === 'proceeded' ? new Date() : null
+      })
+      .where(eq(violationEvents.id, violationId));
+  }
+
   async getViolationEvents(studentEmail?: string, category?: string): Promise<ViolationEvent[]> {
     if (studentEmail && category) {
       return await db.select()

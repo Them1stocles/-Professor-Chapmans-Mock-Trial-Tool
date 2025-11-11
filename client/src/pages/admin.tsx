@@ -715,6 +715,7 @@ export default function AdminDashboard() {
                       <TableHead className="w-[150px]">Student</TableHead>
                       <TableHead>Question & Analysis</TableHead>
                       <TableHead className="w-[120px]">Type</TableHead>
+                      <TableHead className="w-[120px]">Status</TableHead>
                       <TableHead className="w-[150px]">Time</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -724,8 +725,17 @@ export default function AdminDashboard() {
                       const subjectMatch = violation.detail.match(/\[([^\]]+)\]/);
                       const subject = subjectMatch ? subjectMatch[1] : violation.category;
                       
+                      // Determine status badge variant and text
+                      const statusConfig = {
+                        flagged: { variant: 'secondary' as const, text: '⚠️ Flagged', color: 'text-yellow-600' },
+                        proceeded: { variant: 'default' as const, text: '✓ Proceeded', color: 'text-blue-600' },
+                        blocked: { variant: 'destructive' as const, text: '✗ Blocked', color: 'text-red-600' }
+                      };
+                      
+                      const status = statusConfig[violation.status as keyof typeof statusConfig] || statusConfig.flagged;
+                      
                       return (
-                        <TableRow key={violation.id}>
+                        <TableRow key={violation.id} className={violation.status === 'proceeded' ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}>
                           <TableCell className="font-medium align-top">{violation.studentEmail}</TableCell>
                           <TableCell className="max-w-2xl">
                             <div className="whitespace-pre-wrap text-sm break-words">
@@ -735,6 +745,11 @@ export default function AdminDashboard() {
                           <TableCell className="align-top">
                             <Badge variant="destructive" className="whitespace-nowrap">
                               {subject}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <Badge variant={status.variant} className="whitespace-nowrap">
+                              {status.text}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground align-top">
