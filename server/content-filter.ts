@@ -158,12 +158,18 @@ export async function logContentViolation(
   filterResult: ReturnType<typeof checkContentFilter>
 ): Promise<void> {
   try {
+    // Store the full question in the detail field for admin review
+    const categoryLabel = filterResult.category || 'mixed subjects';
+    const detail = `[${categoryLabel.toUpperCase()}] Student asked: "${content}"\n\nFilter Analysis: ${filterResult.details} (confidence: ${(filterResult.confidence * 100).toFixed(0)}%)`;
+    
     await storage.createViolationEvent({
       studentEmail,
       sessionId: sessionId || undefined,
-      category: 'non-english',
-      detail: `Blocked ${filterResult.category || 'mixed'} content (confidence: ${filterResult.confidence}): ${filterResult.details}. Content preview: "${content.slice(0, 200)}${content.length > 200 ? '...' : ''}"`
+      category: 'non-english',  // Category for filtering type
+      detail: detail  // Full question + analysis
     });
+    
+    console.log(`Content violation logged for ${studentEmail}: ${categoryLabel} question blocked`);
   } catch (error) {
     console.error('Failed to log content violation:', error);
   }

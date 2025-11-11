@@ -712,25 +712,37 @@ export default function AdminDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Question</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead>Time</TableHead>
+                      <TableHead className="w-[150px]">Student</TableHead>
+                      <TableHead>Question & Analysis</TableHead>
+                      <TableHead className="w-[120px]">Type</TableHead>
+                      <TableHead className="w-[150px]">Time</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {violations.map((violation: ViolationEvent) => (
-                      <TableRow key={violation.id}>
-                        <TableCell className="font-medium">{violation.studentEmail}</TableCell>
-                        <TableCell className="max-w-md truncate">{violation.detail}</TableCell>
-                        <TableCell>
-                          <Badge variant="destructive">{violation.category}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(violation.timestamp).toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {violations.map((violation: ViolationEvent) => {
+                      // Extract subject from detail if it's a content violation
+                      const subjectMatch = violation.detail.match(/\[([^\]]+)\]/);
+                      const subject = subjectMatch ? subjectMatch[1] : violation.category;
+                      
+                      return (
+                        <TableRow key={violation.id}>
+                          <TableCell className="font-medium align-top">{violation.studentEmail}</TableCell>
+                          <TableCell className="max-w-2xl">
+                            <div className="whitespace-pre-wrap text-sm break-words">
+                              {violation.detail}
+                            </div>
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <Badge variant="destructive" className="whitespace-nowrap">
+                              {subject}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground align-top">
+                            {new Date(violation.timestamp).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
                 {violations.length === 0 && (
