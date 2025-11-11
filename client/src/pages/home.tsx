@@ -96,8 +96,8 @@ export default function Home() {
       </div>
 
       {/* Features Section with Aurora Background */}
-      <AuroraBackground className="h-auto min-h-0">
-        <div className="container mx-auto px-4 py-12 relative z-10">
+      <AuroraBackground>
+        <div className="container mx-auto px-4 py-12 relative">
           <div className="grid md:grid-cols-3 gap-8 mb-12">
           <Card className="text-center">
             <CardHeader>
