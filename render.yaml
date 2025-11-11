@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: professor-chapmans-mock-trial
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
