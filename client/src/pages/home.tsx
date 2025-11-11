@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { BookOpen, Users, MessageCircle } from "lucide-react";
 import { z } from "zod";
+import { AuroraBackground } from "@/components/ui/aurora-background";
 
 // Extend the schema to include validation for the form
 const sessionFormSchema = insertChatSessionSchema.extend({
@@ -94,9 +95,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Features Section */}
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+      {/* Features Section with Aurora Background */}
+      <AuroraBackground className="h-auto min-h-0">
+        <div className="container mx-auto px-4 py-12 relative z-10">
+          <div className="grid md:grid-cols-3 gap-8 mb-12">
           <Card className="text-center">
             <CardHeader>
               <Users className="w-12 h-12 mx-auto text-blue-600 mb-4" />
@@ -271,7 +273,8 @@ export default function Home() {
             </CardContent>
           </Card>
         </div>
-      </div>
+        </div>
+      </AuroraBackground>
     </div>
   );
 }
