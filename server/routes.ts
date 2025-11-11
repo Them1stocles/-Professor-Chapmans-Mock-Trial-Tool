@@ -142,6 +142,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to test admin password (REMOVE IN PRODUCTION)
+  app.post("/api/debug/test-password", async (req, res) => {
+    const { password } = req.body;
+    const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'ChapmanEnglish2024!').trim();
+    
+    res.json({
+      received: password,
+      receivedLength: password?.length,
+      receivedTrimmed: password?.trim(),
+      receivedTrimmedLength: password?.trim().length,
+      expectedLength: ADMIN_PASSWORD.length,
+      match: password?.trim() === ADMIN_PASSWORD,
+      firstCharMatch: password?.trim().charCodeAt(0) === ADMIN_PASSWORD.charCodeAt(0),
+      lastCharMatch: password?.trim().charCodeAt(password?.trim().length - 1) === ADMIN_PASSWORD.charCodeAt(ADMIN_PASSWORD.length - 1),
+    });
+  });
+
   // Admin Authentication Routes
   app.post("/api/admin/login", adminLogin);
   app.post("/api/admin/logout", adminLogout);

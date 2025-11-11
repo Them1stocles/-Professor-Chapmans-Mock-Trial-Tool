@@ -45,10 +45,16 @@ function checkRateLimit(ip: string): boolean {
 // Admin login
 export async function adminLogin(req: Request, res: Response) {
   try {
+    console.log('=== ADMIN LOGIN ATTEMPT ===');
+    console.log('Request body:', JSON.stringify(req.body));
+    console.log('Request headers:', JSON.stringify(req.headers));
+    
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+    console.log('Client IP:', clientIP);
     
     // Check rate limiting
     if (!checkRateLimit(clientIP)) {
+      console.log('Rate limit exceeded for IP:', clientIP);
       return res.status(429).json({ 
         error: 'Too many login attempts',
         message: 'Too many failed login attempts. Please try again in 15 minutes.'
@@ -58,17 +64,28 @@ export async function adminLogin(req: Request, res: Response) {
     const { password } = req.body;
     const trimmedPassword = password?.trim();
     
-    console.log('Admin login attempt - Password length received:', password?.length, 'Expected length:', ADMIN_PASSWORD.length);
+    console.log('Password received:', password ? `[${password.length} chars]` : 'null/undefined');
+    console.log('Trimmed password:', trimmedPassword ? `[${trimmedPassword.length} chars]` : 'null/undefined');
+    console.log('Expected password:', ADMIN_PASSWORD ? `[${ADMIN_PASSWORD.length} chars]` : 'null/undefined');
+    console.log('Passwords match:', trimmedPassword === ADMIN_PASSWORD);
+    
+    // Debug: Show first and last chars (safe for debugging)
+    if (trimmedPassword && ADMIN_PASSWORD) {
+      console.log('Received first char code:', trimmedPassword.charCodeAt(0));
+      console.log('Expected first char code:', ADMIN_PASSWORD.charCodeAt(0));
+      console.log('Received last char code:', trimmedPassword.charCodeAt(trimmedPassword.length - 1));
+      console.log('Expected last char code:', ADMIN_PASSWORD.charCodeAt(ADMIN_PASSWORD.length - 1));
+    }
     
     if (!trimmedPassword || trimmedPassword !== ADMIN_PASSWORD) {
-      console.log('Admin login failed - Password mismatch');
+      console.log('❌ Admin login FAILED - Password mismatch');
       return res.status(401).json({ 
         error: 'Invalid password',
         message: 'Incorrect admin password'
       });
     }
     
-    console.log('Admin login successful');
+    console.log('✅ Admin login SUCCESSFUL');
     
     // Clear rate limiting on successful login
     loginAttempts.delete(clientIP);
